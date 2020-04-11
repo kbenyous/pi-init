@@ -1,0 +1,80 @@
+---
+
+# prerequis : installer sshpass localement
+
+# Play 1 : Create 
+- hosts: pi
+  gather_facts: no
+  ignore_unreachable: yes
+  vars:
+    ansible_ssh_user: pi
+    raspi_config_new_user: "{{ hostvars[inventory_hostname].ansible_ssh_user  }}"
+    raspi_config_host: "{{ ansible_host|d(inventory_hostname) }}"
+  pre_tasks:
+    - name : "Insert SSH key in authorized_keys for pi@{{ raspi_config_host }}"
+      shell: |
+          sshpass -p "raspberry" ssh-copy-id pi@{{ raspi_config_host }}
+      delegate_to: localhost
+      register: raspiconfig_ssh_setup_result
+      changed_when: "'Number of key(s) added:' in raspiconfig_ssh_setup_result.stdout"
+      failed_when: false
+  tasks:
+    - name: Bootstrap Ansible on remote machine
+      raw: apt-get install -y python python-simplejson
+      register: raspiconfig_config_python_install_result
+      changed_when: "'NOUVEAUX' in raspiconfig_config_python_install_result.stdout or 'NEW' in raspiconfig_config_python_install_result"
+      become: yes
+
+    - name: Add new group, user and authorized_keys
+      become: yes
+      block:
+      - name: Create new admin group, for passwordless sudo
+        group:
+          name: admin
+
+      - name: "Create new {{ raspi_config_new_user }} user instead of pi"
+        user:
+          name: "{{ raspi_config_new_user }}"
+          group: admin
+          groups: adm,dialout,cdrom,sudo,audio,video,plugdev,games,users,input,netdev,spi,i2c,gpio
+        # groups list and signification : https://raspberrypi.stackexchange.com/questions/70214/what-does-each-of-the-default-groups-on-the-raspberry-pi-do
+
+      - name: "Insert SSH key in authorized_keys for {{ raspi_config_new_user }}@{{ raspi_config_host }}"
+        authorized_key:
+          user: "{{ raspi_config_new_user }}"
+          state: present
+          key: "{{ lookup('file', '/home/karim/.ssh/id_rsa.pub') }}"
+
+      - name: Allow passwordless sudo
+        lineinfile:
+          path: /etc/sudoers
+          state: present
+          line: '%admin   ALL=(ALL) NOPASSWD: ALL'
+          validate: '/usr/sbin/visudo -cf %s'
+  
+- hosts: pi
+  become: yes
+  tasks:
+
+    - name: Lock pi user
+      user:
+        name: pi
+        password_lock : yes
+
+    - name: update all packages
+      apt:
+        upgrade: dist
+
+    
+    - name: Set timezone to Europe/Paris
+      timezone:
+        name: Europe/Paris
+
+    - name: Ensure fr_FR.UTF-8 locale exists
+      locale_gen:
+        name: fr_FR.UTF-8
+        state: present
+    - name: Set hostname
+      hostname: 
+        name: "{{ ansible_host|d(inventory_hostname) }}"
+
