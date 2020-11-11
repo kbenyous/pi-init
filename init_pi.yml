@@ -18,6 +18,9 @@
       register: raspiconfig_ssh_setup_result
       changed_when: "'Number of key(s) added:' in raspiconfig_ssh_setup_result.stdout"
       failed_when: false
+      # TODO : changer failed_when pour gérer  "/bin/sh: 1: sshpass: not found"
+      #     "msg": "non-zero return code",
+     # "rc": 127,
   tasks:
     - name: Bootstrap Ansible on remote machine
       raw: apt-get install -y python python-simplejson
@@ -77,4 +80,21 @@
     - name: Set hostname
       hostname: 
         name: "{{ ansible_host|d(inventory_hostname) }}"
+    
+    - name: "Create custom fact directory"
+      file:
+        path: "/etc/ansible/facts.d"
+        state: "directory"
+        owner: root
+        group: root
+
+    - name: Add custom fact for detecting Pi model
+      copy:
+        src: files/pi.fact
+        dest: /etc/ansible/facts.d/pi.fact
+        mode: 0755
+        owner: root
+        group: root
+        
+
 

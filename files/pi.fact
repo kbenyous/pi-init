@@ -1,0 +1,2 @@
+#!/bin/bash
+echo "{ \"model\": \"$(cat /proc/device-tree/model | tr -d '\000')\" }"
