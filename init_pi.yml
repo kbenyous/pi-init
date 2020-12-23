@@ -68,6 +68,9 @@
       apt:
         upgrade: dist
 
+    - name: Install acl package (for sudo-ing to non-root user)
+      apt:
+        name: acl
     
     - name: Set timezone to Europe/Paris
       timezone:
