@@ -23,10 +23,12 @@
      # "rc": 127,
   tasks:
     - name: Bootstrap Ansible on remote machine
-      raw: apt-get install -y python python-simplejson
+      raw: apt-get install -y python python-simplejson python-setuptools
       register: raspiconfig_config_python_install_result
       changed_when: "'NOUVEAUX' in raspiconfig_config_python_install_result.stdout or 'NEW' in raspiconfig_config_python_install_result"
       become: yes
+      # python-setuptools is required for further usage of pip module. https://docs.ansible.com/ansible/latest/collections/ansible/builtin/pip_module.html
+      # The setuptools package must be installed for both the Ansible Python interpreter and for the version of Python specified by the 'executable' option of the Ansible pip module.
 
     - name: Add new group, user and authorized_keys
       become: yes
